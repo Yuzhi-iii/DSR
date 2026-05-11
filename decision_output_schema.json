@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decision Output Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "overall_risk",
+    "recommended_path",
+    "summary_rationale",
+    "key_drivers",
+    "priority_actions"
+  ],
+  "properties": {
+    "overall_risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Overall screening-level risk or concern classification."
+    },
+    "recommended_path": {
+      "type": "string",
+      "enum": [
+        "accept_and_proceed",
+        "officer_review",
+        "legal_or_dpo_review",
+        "request_more_information",
+        "halt_or_manual_review"
+      ],
+      "description": "Recommended next procedural path after rule-based aggregation."
+    },
+    "summary_rationale": {
+      "type": "string",
+      "description": "Short explanation summarising why this overall decision was reached."
+    },
+    "key_drivers": {
+      "type": "array",
+      "description": "Main requirement-level drivers of the overall decision.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "priority_actions": {
+      "type": "array",
+      "description": "Business-oriented next steps recommended by the system.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

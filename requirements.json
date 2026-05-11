@@ -1,0 +1,820 @@
+[
+{
+  "requirement_id": "MR1",
+  "name": "Legal basis and Article 9 condition clarity",
+  "meta_requirement": "Processing of personal data must have an identifiable legal basis, and processing of special category data must have an identifiable Article 9 condition where applicable.",
+  "requirement_class": "core_legal_requirement",
+  "primary_sources": ["GDPR Art. 6", "GDPR Art. 9"],
+  "supporting_sources": ["GDPR Arts. 13-14", "GDPR Art. 30"],
+  "criticality": "critical",
+  "depends_on": [
+    "extracted_parameters.object.health_data_processing",
+    "extracted_parameters.object.biometric_processing",
+    "extracted_parameters.object.is_sensitive",
+    "extracted_parameters.conditions_and_basis.legal_basis_clarity",
+    "extracted_parameters.conditions_and_basis.article_9_condition_identified",
+    "extracted_parameters.regulatory_logic.automated_decision_making",
+    "extracted_parameters.regulatory_logic.profiling_indicated",
+    "extracted_parameters.conditions_and_basis.human_oversight",
+    "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated"
+  ],
+  "trigger_logic": {
+    "any_of": [
+      { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+      { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" },
+      { "field": "extracted_parameters.object.is_sensitive", "equals": "yes" }
+    ]
+  },
+"assessment_rules": [
+  {
+    "if": {
+      "any_of": [
+        {
+          "all_of": [
+            { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" },
+            { "field": "extracted_parameters.conditions_and_basis.legal_basis_clarity", "in": ["unclear", "not_provided"] }
+          ]
+        },
+        {
+          "all_of": [
+            { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+            { "field": "extracted_parameters.regulatory_logic.automated_decision_making", "equals": "yes" },
+            { "field": "extracted_parameters.conditions_and_basis.human_oversight", "in": ["absent", "unclear", "not_mentioned"] }
+          ]
+        },
+        {
+          "all_of": [
+            { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+            { "field": "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated", "equals": "yes" },
+            { "field": "extracted_parameters.conditions_and_basis.legal_basis_clarity", "in": ["unclear", "not_provided"] }
+          ]
+        }
+      ]
+    },
+    "status": "potential_gap",
+    "rationale": "Sensitive or special-category processing is indicated and the legal basis or Article 9 condition remains unclear in a higher-risk processing context."
+  },
+  {
+    "if": {
+      "any_of": [
+        { "field": "extracted_parameters.conditions_and_basis.legal_basis_clarity", "in": ["unclear", "not_provided", "partial"] },
+        { "field": "extracted_parameters.conditions_and_basis.article_9_condition_identified", "in": ["unclear", "not_mentioned"] }
+      ]
+    },
+    "status": "insufficient_information",
+    "rationale": "Sensitive or potentially sensitive processing may be involved, but the legal basis or Article 9 condition is not clearly documented for reliable screening."
+  },
+  {
+    "if": {
+      "all_of": [
+        { "field": "extracted_parameters.conditions_and_basis.legal_basis_clarity", "equals": "clear" },
+        { "field": "extracted_parameters.conditions_and_basis.article_9_condition_identified", "in": ["yes", "not_applicable"] }
+      ]
+    },
+    "status": "met",
+    "rationale": "The legal basis is clear and the Article 9 condition is identified where relevant."
+  }
+],
+  "default_if_triggered": {
+    "status": "insufficient_information",
+    "rationale": "This requirement was triggered but the legal basis framework could not be reliably assessed."
+  },
+  "recommended_action_by_status": {
+    "met": "proceed_to_next_checks",
+    "insufficient_information": "officer_review",
+    "potential_gap": "legal_or_dpo_review"
+  }
+},
+  {
+    "requirement_id": "MR2",
+    "name": "Processing purpose and role clarity",
+    "meta_requirement": "The nature, purpose, and basic role allocation of the processing must be sufficiently clear to enable procurement-stage screening.",
+    "requirement_class": "derived_screening_requirement",
+    "primary_sources": [
+      "GDPR Arts. 13-14",
+      "GDPR Art. 30"
+    ],
+    "supporting_sources": [
+      "GDPR Art. 25",
+      "Accountability and transparency principles"
+    ],
+    "criticality": "important",
+    "depends_on": [
+      "case_metadata.procurement_purpose",
+      "case_metadata.deployment_context",
+      "actors.data_controller_identifiable",
+      "actors.vendor_role",
+      "actors.joint_controller_possibility"
+    ],
+    "trigger_logic": {
+      "always": true
+    },
+    "assessment_rules": [
+      {
+        "if": {
+          "any_of": [
+            {
+              "field": "case_metadata.procurement_purpose",
+              "in": [
+                "unspecified",
+                "other"
+              ]
+            },
+            {
+              "field": "case_metadata.deployment_context",
+              "in": [
+                "unspecified",
+                "other"
+              ]
+            },
+            {
+              "field": "actors.data_controller_identifiable",
+              "in": [
+                "no",
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.vendor_role",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.joint_controller_possibility",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            }
+          ]
+        },
+        "status": "insufficient_information",
+        "rationale": "The processing purpose, deployment context, or basic role allocation is not sufficiently clear for screening."
+      },
+      {
+        "if": {
+          "all_of": [
+            {
+              "field": "case_metadata.procurement_purpose",
+              "not_in": [
+                "unspecified",
+                "other"
+              ]
+            },
+            {
+              "field": "case_metadata.deployment_context",
+              "not_in": [
+                "unspecified",
+                "other"
+              ]
+            },
+            {
+              "field": "actors.data_controller_identifiable",
+              "equals": "yes"
+            },
+            {
+              "field": "actors.vendor_role",
+              "not_in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.joint_controller_possibility",
+              "not_in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            }
+          ]
+        },
+        "status": "met",
+        "rationale": "The processing purpose, deployment context, and basic role allocation are sufficiently identifiable."
+      }
+    ],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "The available materials do not clearly establish the processing purpose, context, and actor roles."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_to_next_checks",
+      "insufficient_information": "officer_review",
+      "potential_gap": "officer_review"
+    }
+  },
+  {
+    "requirement_id": "MR3",
+    "name": "Profiling or automated decision-related functionality identifiability",
+    "meta_requirement": "Potential profiling or automated decision-related functionality must be identifiable at screening stage.",
+    "requirement_class": "core_legal_requirement",
+    "primary_sources": [
+      "GDPR Art. 22"
+    ],
+    "supporting_sources": [
+      "GDPR Arts. 13-14"
+    ],
+    "criticality": "critical",
+    "depends_on": [
+      "extracted_parameters.regulatory_logic.automated_decision_making",
+      "extracted_parameters.regulatory_logic.profiling_indicated",
+      "extracted_parameters.conditions_and_basis.human_oversight"
+    ],
+    "trigger_logic": {
+      "any_of": [
+        {
+          "field": "extracted_parameters.regulatory_logic.automated_decision_making",
+          "in": [
+            "yes",
+            "unclear",
+            "not_mentioned"
+          ]
+        },
+        {
+          "field": "extracted_parameters.regulatory_logic.profiling_indicated",
+          "in": [
+            "yes",
+            "unclear",
+            "not_mentioned"
+          ]
+        }
+      ]
+    },
+    "assessment_rules": [
+      {
+        "if": {
+          "any_of": [
+            {
+              "field": "extracted_parameters.regulatory_logic.automated_decision_making",
+              "equals": "yes"
+            },
+            {
+              "field": "extracted_parameters.regulatory_logic.profiling_indicated",
+              "equals": "yes"
+            }
+          ]
+        },
+        "status": "met",
+        "rationale": "The materials identify automated decision-related or profiling functionality."
+      },
+      {
+        "if": {
+          "all_of": [
+            {
+              "field": "extracted_parameters.regulatory_logic.automated_decision_making",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "extracted_parameters.regulatory_logic.profiling_indicated",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            }
+          ]
+        },
+        "status": "insufficient_information",
+        "rationale": "The materials do not make it sufficiently clear whether profiling or automated decision-related functionality is involved."
+      }
+    ],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "Potential profiling or automated decision-related functionality could not be confidently identified or excluded."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_with_heightened_checks",
+      "insufficient_information": "officer_review",
+      "potential_gap": "officer_review"
+    }
+  },
+  {
+    "requirement_id": "MR4",
+    "name": "Human oversight visibility",
+    "meta_requirement": "Where automated, high-impact, or sensitive-data processing is involved, relevant human oversight arrangements should be present or clearly described for screening purposes.",
+    "requirement_class": "legally_anchored_operationalization",
+    "primary_sources": [
+      "AI Act Art. 14"
+    ],
+    "supporting_sources": [
+      "AI Act Art. 13",
+      "AI Act Art. 26"
+    ],
+    "criticality": "critical",
+    "depends_on": [
+      "extracted_parameters.regulatory_logic.automated_decision_making",
+      "extracted_parameters.regulatory_logic.profiling_indicated",
+      "extracted_parameters.object.health_data_processing",
+      "extracted_parameters.regulatory_logic.processing_context_type",
+      "extracted_parameters.regulatory_logic.decision_effect_level",
+      "extracted_parameters.conditions_and_basis.human_oversight"
+    ],
+"trigger_logic": {
+  "any_of": [
+    {
+      "field": "extracted_parameters.regulatory_logic.automated_decision_making",
+      "equals": "yes"
+    },
+    {
+      "field": "extracted_parameters.regulatory_logic.profiling_indicated",
+      "equals": "yes"
+    },
+    {
+      "field": "extracted_parameters.object.health_data_processing",
+      "equals": "yes"
+    },
+    {
+      "field": "extracted_parameters.regulatory_logic.decision_effect_level",
+      "in": [
+        "legal_or_similarly_significant",
+        "clinical_or_care_significant",
+        "employment_or_benefit_significant",
+        "unclear"
+      ]
+    },
+    {
+      "field": "extracted_parameters.regulatory_logic.processing_context_type",
+      "in": [
+        "clinical_care",
+        "diagnostic_or_monitoring",
+        "occupational_health",
+        "unclear"
+      ]
+    }
+  ]
+},
+"assessment_rules": [
+  {
+    "if": {
+      "all_of": [
+        {
+          "field": "extracted_parameters.conditions_and_basis.human_oversight",
+          "in": ["absent", "unclear", "not_mentioned"]
+        },
+        {
+          "any_of": [
+            {
+              "field": "extracted_parameters.regulatory_logic.decision_effect_level",
+              "in": [
+                "legal_or_similarly_significant",
+                "clinical_or_care_significant",
+                "employment_or_benefit_significant"
+              ]
+            },
+            {
+              "field": "extracted_parameters.regulatory_logic.processing_context_type",
+              "in": [
+                "clinical_care",
+                "diagnostic_or_monitoring",
+                "occupational_health"
+              ]
+            },
+            {
+              "field": "extracted_parameters.object.health_data_processing",
+              "equals": "yes"
+            }
+          ]
+        }
+      ]
+    },
+    "status": "potential_gap",
+    "rationale": "Human oversight is absent or not clearly described in a higher-impact or more sensitive processing context."
+  },
+  {
+    "if": {
+      "all_of": [
+        {
+          "field": "extracted_parameters.conditions_and_basis.human_oversight",
+          "in": ["absent", "unclear", "not_mentioned"]
+        },
+        {
+          "any_of": [
+            {
+              "field": "extracted_parameters.regulatory_logic.decision_effect_level",
+              "in": ["recommendation_only", "analytics_only", "not_mentioned"]
+            },
+            {
+              "field": "extracted_parameters.regulatory_logic.processing_context_type",
+              "in": [
+                "employee_wellness",
+                "administrative_operations",
+                "consumer_or_service_personalisation",
+                "mixed",
+                "not_mentioned"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "status": "insufficient_information",
+    "rationale": "Human oversight is not clearly described, but the available materials indicate a lower-impact, advisory, or non-clinical context."
+  },
+  {
+    "if": {
+      "field": "extracted_parameters.conditions_and_basis.human_oversight",
+      "equals": "limited"
+    },
+    "status": "insufficient_information",
+    "rationale": "Some human involvement is mentioned, but meaningful human oversight arrangements are not clearly established."
+  },
+  {
+    "if": {
+      "field": "extracted_parameters.conditions_and_basis.human_oversight",
+      "equals": "present"
+    },
+    "status": "met",
+    "rationale": "Human oversight arrangements are clearly described."
+  }
+],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "The need for human oversight is triggered, but the materials do not support a reliable assessment."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_to_next_checks",
+      "insufficient_information": "officer_review",
+      "potential_gap": "officer_review"
+    }
+  },
+  {
+    "requirement_id": "MR5",
+    "name": "Documentation sufficiency for procurement-stage screening",
+    "meta_requirement": "Minimum documentation must be sufficient to support reliable procurement-stage screening, including screening of relevant AI governance and technical documentation expectations where applicable.",
+    "requirement_class": "derived_screening_requirement",
+    "primary_sources": [
+      "GDPR Art. 5",
+      "GDPR Art. 30",
+      "AI Act Art. 11"
+    ],
+    "supporting_sources": [
+      "GDPR Art. 25"
+    ],
+    "criticality": "important",
+    "depends_on": [
+      "extracted_parameters.conditions_and_basis.vendor_documentation_quality",
+      "missing_information"
+    ],
+    "trigger_logic": {
+      "always": true
+    },
+    "assessment_rules": [
+      {
+        "if": {
+          "field": "extracted_parameters.conditions_and_basis.vendor_documentation_quality",
+          "in": [
+            "low",
+            "insufficient_information",
+            "not_provided"
+          ]
+        },
+        "status": "insufficient_information",
+        "rationale": "The submitted documentation is not sufficient for reliable procurement-stage screening, including assessment of relevant governance and technical documentation expectations."
+      },
+      {
+        "if": {
+          "field": "extracted_parameters.conditions_and_basis.vendor_documentation_quality",
+          "equals": "medium"
+        },
+        "status": "insufficient_information",
+        "rationale": "The documentation supports initial review, but not enough for confident screening of governance and technical documentation expectations."
+      },
+      {
+        "if": {
+          "field": "extracted_parameters.conditions_and_basis.vendor_documentation_quality",
+          "equals": "high"
+        },
+        "status": "met",
+        "rationale": "The submitted documentation is sufficient for procurement-stage screening."
+      }
+    ],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "Documentation sufficiency could not be reliably assessed."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_to_next_checks",
+      "insufficient_information": "request_more_information",
+      "potential_gap": "request_more_information_or_manual_review"
+    }
+  },
+  {
+  "requirement_id": "MR6",
+  "name": "Impact assessment consideration trigger",
+  "meta_requirement": "Indicators of potentially high-risk processing or high-risk AI relevance must trigger consideration of further impact assessment or heightened review.",
+  "requirement_class": "screening_oriented_escalation_requirement",
+  "primary_sources": ["GDPR Art. 35","AI Act Art. 6", "AI Act Art. 27 if applicable"],
+  "supporting_sources": ["AI Act Art. 10"],
+  "criticality": "critical",
+  "depends_on": [
+  "extracted_parameters.object.health_data_processing",
+  "extracted_parameters.object.biometric_processing",
+  "extracted_parameters.regulatory_logic.automated_decision_making",
+  "extracted_parameters.regulatory_logic.profiling_indicated",
+  "extracted_parameters.regulatory_logic.processing_context_type",
+  "extracted_parameters.regulatory_logic.decision_effect_level",
+  "extracted_parameters.conditions_and_basis.human_oversight",
+  "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated"
+],
+ "trigger_logic": {
+  "any_of": [
+    { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+    { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" },
+    {
+      "all_of": [
+        { "field": "extracted_parameters.regulatory_logic.automated_decision_making", "equals": "yes" },
+        {
+          "field": "extracted_parameters.regulatory_logic.decision_effect_level",
+          "in": [
+            "legal_or_similarly_significant",
+            "clinical_or_care_significant",
+            "employment_or_benefit_significant"
+          ]
+        }
+      ]
+    },
+    {
+      "all_of": [
+        { "field": "extracted_parameters.regulatory_logic.profiling_indicated", "equals": "yes" },
+        {
+          "field": "extracted_parameters.regulatory_logic.processing_context_type",
+          "in": [
+            "clinical_care",
+            "diagnostic_or_monitoring",
+            "occupational_health"
+          ]
+        }
+      ]
+    }
+  ]
+},
+"assessment_rules": [
+  {
+    "if": {
+      "any_of": [
+        {
+          "all_of": [
+            {
+              "field": "extracted_parameters.regulatory_logic.decision_effect_level",
+              "in": [
+                "legal_or_similarly_significant",
+                "clinical_or_care_significant",
+                "employment_or_benefit_significant"
+              ]
+            },
+            {
+              "field": "extracted_parameters.conditions_and_basis.human_oversight",
+              "in": ["absent", "unclear", "not_mentioned"]
+            },
+            {
+              "any_of": [
+                { "field": "extracted_parameters.regulatory_logic.automated_decision_making", "equals": "yes" },
+                { "field": "extracted_parameters.regulatory_logic.profiling_indicated", "equals": "yes" },
+                { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+                { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" }
+              ]
+            }
+          ]
+        },
+        {
+          "all_of": [
+            { "field": "extracted_parameters.object.health_data_processing", "equals": "yes" },
+            {
+              "field": "extracted_parameters.regulatory_logic.processing_context_type",
+              "in": [
+                "clinical_care",
+                "diagnostic_or_monitoring",
+                "occupational_health"
+              ]
+            },
+            {
+              "field": "extracted_parameters.conditions_and_basis.human_oversight",
+              "in": ["absent", "unclear", "not_mentioned"]
+            }
+          ]
+        },
+        {
+          "all_of": [
+            { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" },
+            {
+              "field": "extracted_parameters.conditions_and_basis.human_oversight",
+              "in": ["absent", "unclear", "not_mentioned"]
+            }
+          ]
+        }
+      ]
+    },
+    "status": "potential_gap",
+    "rationale": "The case presents a stronger combination of high-impact, sensitive-processing, or high-risk-AI-relevant indicators that should trigger more serious impact assessment or heightened review consideration."
+  },
+{
+  "if": {
+    "all_of": [
+      {
+        "any_of": [
+          { "field": "extracted_parameters.object.health_data_processing", "in": ["yes", "unclear"] },
+          { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" },
+          { "field": "extracted_parameters.regulatory_logic.automated_decision_making", "equals": "yes" },
+          { "field": "extracted_parameters.regulatory_logic.profiling_indicated", "equals": "yes" }
+        ]
+      },
+      {
+        "any_of": [
+          { "field": "extracted_parameters.conditions_and_basis.human_oversight", "in": ["absent", "unclear", "not_mentioned", "limited"] },
+          { "field": "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated", "equals": "yes" },
+          { "field": "extracted_parameters.object.health_data_processing", "in": ["yes", "unclear"] },
+          { "field": "extracted_parameters.object.biometric_processing", "equals": "yes" }
+        ]
+      }
+    ]
+  },
+  "status": "insufficient_information",
+  "rationale": "Some impact-assessment relevance indicators are present, but the available materials do not support a confident conclusion at screening stage."
+}
+],
+  "default_if_triggered": {
+    "status": "insufficient_information",
+    "rationale": "Further impact assessment may be relevant, but the case materials are not conclusive."
+  },
+  "recommended_action_by_status": {
+    "met": "proceed_to_next_checks",
+    "insufficient_information": "officer_review",
+    "potential_gap": "legal_or_dpo_review"
+  }
+},
+  {
+    "requirement_id": "MR7",
+    "name": "Transfer and hosting visibility",
+    "meta_requirement": "Relevant hosting, storage, cross-border transfer, and basic security-relevant infrastructure implications must be sufficiently identifiable where personal data is involved.",
+    "requirement_class": "derived_screening_requirement",
+    "primary_sources": [
+      "GDPR Chapter V"
+    ],
+    "supporting_sources": [
+      "GDPR Art. 32",
+      "Accountability and processor due diligence context"
+    ],
+    "criticality": "important",
+    "depends_on": [
+      "extracted_parameters.object.health_data_processing",
+      "extracted_parameters.object.is_sensitive",
+      "extracted_parameters.infrastructure_and_transfers.cloud_hosting_involved",
+      "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated",
+      "extracted_parameters.infrastructure_and_transfers.data_storage_location_clarity"
+    ],
+    "trigger_logic": {
+      "any_of": [
+        {
+          "field": "extracted_parameters.object.health_data_processing",
+          "equals": "yes"
+        },
+        {
+          "field": "extracted_parameters.object.is_sensitive",
+          "equals": "yes"
+        },
+        {
+          "field": "extracted_parameters.infrastructure_and_transfers.cloud_hosting_involved",
+          "equals": "yes"
+        }
+      ]
+    },
+    "assessment_rules": [
+      {
+        "if": {
+          "field": "extracted_parameters.infrastructure_and_transfers.data_storage_location_clarity",
+          "in": [
+            "unclear",
+            "not_provided"
+          ]
+        },
+        "status": "insufficient_information",
+        "rationale": "The hosting or storage location is not sufficiently clear for transfer screening."
+      },
+      {
+        "if": {
+          "field": "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated",
+          "equals": "yes"
+        },
+        "status": "potential_gap",
+        "rationale": "Cross-border transfer implications are indicated and require further scrutiny, including associated hosting and security-relevant safeguards."
+      },
+      {
+        "if": {
+          "all_of": [
+            {
+              "field": "extracted_parameters.infrastructure_and_transfers.data_storage_location_clarity",
+              "equals": "clear"
+            },
+            {
+              "field": "extracted_parameters.infrastructure_and_transfers.cross_border_transfer_indicated",
+              "equals": "no"
+            }
+          ]
+        },
+        "status": "met",
+        "rationale": "Hosting and storage information is sufficiently clear and no cross-border transfer is indicated."
+      }
+    ],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "Transfer and hosting implications could not be assessed reliably."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_to_next_checks",
+      "insufficient_information": "officer_review",
+      "potential_gap": "legal_or_dpo_review"
+    }
+  },
+  {
+    "requirement_id": "MR8",
+    "name": "Controller-processor role clarity",
+    "meta_requirement": "The basic controller, processor, and possible joint-controller roles must be sufficiently identifiable for procurement-stage review.",
+    "requirement_class": "derived_screening_requirement",
+    "primary_sources": [
+      "GDPR Arts. 4, 24, 28, 26"
+    ],
+    "supporting_sources": [
+      "Accountability and contracting context"
+    ],
+    "criticality": "important",
+    "depends_on": [
+      "actors.data_controller_identifiable",
+      "actors.vendor_role",
+      "actors.joint_controller_possibility"
+    ],
+    "trigger_logic": {
+      "always": true
+    },
+    "assessment_rules": [
+      {
+        "if": {
+          "any_of": [
+            {
+              "field": "actors.data_controller_identifiable",
+              "in": [
+                "no",
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.vendor_role",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.joint_controller_possibility",
+              "in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            }
+          ]
+        },
+        "status": "insufficient_information",
+        "rationale": "The core controller/processor role allocation is not sufficiently clear."
+      },
+      {
+        "if": {
+          "all_of": [
+            {
+              "field": "actors.data_controller_identifiable",
+              "equals": "yes"
+            },
+            {
+              "field": "actors.vendor_role",
+              "not_in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            },
+            {
+              "field": "actors.joint_controller_possibility",
+              "not_in": [
+                "unclear",
+                "not_mentioned"
+              ]
+            }
+          ]
+        },
+        "status": "met",
+        "rationale": "The main controller/processor role allocation is described sufficiently for screening."
+      }
+    ],
+    "default_if_triggered": {
+      "status": "insufficient_information",
+      "rationale": "The role allocation could not be assessed reliably."
+    },
+    "recommended_action_by_status": {
+      "met": "proceed_to_next_checks",
+      "insufficient_information": "officer_review",
+      "potential_gap": "officer_review"
+    }
+  }
+]

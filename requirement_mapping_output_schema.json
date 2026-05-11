@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Requirement Mapping Output Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requirement_assessments"],
+  "properties": {
+    "requirement_assessments": {
+      "type": "array",
+      "description": "Requirement-level assessment results produced by the mapping layer.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requirement_id",
+          "name",
+          "triggered",
+          "status",
+          "rationale",
+          "recommended_action",
+          "criticality",
+          "evidence_refs",
+          "depends_on"
+        ],
+        "properties": {
+          "requirement_id": {
+            "type": "string",
+            "description": "Unique identifier of the requirement, e.g. MR1."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable requirement name."
+          },
+          "triggered": {
+            "type": "boolean",
+            "description": "Whether the requirement is applicable to the current case."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "met",
+              "insufficient_information",
+              "potential_gap",
+              "not_triggered"
+            ],
+            "description": "Requirement-level assessment status."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Short explanation for the assigned status."
+          },
+          "recommended_action": {
+  "type": "string",
+  "enum": [
+    "none",
+    "proceed_to_next_checks",
+    "proceed_with_heightened_checks",
+    "officer_review",
+    "legal_or_dpo_review",
+    "request_more_information",
+    "request_more_information_or_manual_review"
+  ],
+  "description": "Immediate local action recommendation associated with this requirement."
+},
+          "criticality": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "important"
+            ],
+            "description": "Relative importance of the requirement for downstream aggregation."
+          },
+          "evidence_refs": {
+            "type": "object",
+            "description": "Mapping from extracted fact paths to short supporting evidence excerpts.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "List of extracted fact paths used in this requirement assessment.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
