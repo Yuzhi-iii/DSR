@@ -12,6 +12,12 @@ It provides **preliminary screening and escalation advice only** based on the cu
 - **Recommended path:** [natural-language recommendation]
 - **Main reasons:** [2–3 sentence summary of the main screening concerns]
 
+## Screening Outcome
+- **Overall risk:** [overall risk]
+- **Recommended path:** [natural-language recommendation]
+- **Impact assessment signal:** [use the structured impact-assessment signal exactly in meaning]
+- **Escalation drivers:** [list the key driver requirement IDs and statuses]
+
 ## Key Screening Concerns
 - [plain-language concern summary]
 - [plain-language concern summary]
@@ -21,7 +27,6 @@ It provides **preliminary screening and escalation advice only** based on the cu
 1. [priority action]
 2. [priority action]
 3. [priority action, if needed]
-
 
 ## Structured Facts
 - **Procurement purpose:** [summary]
@@ -39,7 +44,7 @@ It provides **preliminary screening and escalation advice only** based on the cu
 
 ## Triggered Rules
 
-### Primary Drivers
+### Escalation Drivers
 #### [Requirement ID] [Requirement name]
 - **Status:** [status]
 - **Why it matters:** [plain-language explanation]
@@ -50,7 +55,7 @@ It provides **preliminary screening and escalation advice only** based on the cu
 - **Why it matters:** [plain-language explanation]
 - **Screening interpretation:** [plain-language explanation]
 
-### Additional Triggered Rules
+### Other Requirement Assessments
 - **[Requirement ID] [Requirement name]:** [status] — [one-line explanation]
 - **[Requirement ID] [Requirement name]:** [status] — [one-line explanation]
 - **[Requirement ID] [Requirement name]:** [status] — [one-line explanation]
