@@ -366,6 +366,50 @@ Rules:
 7. Keep evidence excerpts brief and as literal as possible.
 
 Field guidance:
+For data_types_involved, use a strict evidence-only interpretation.
+
+Include a data type only when the source text directly states or clearly describes that specific category of data.
+
+Do NOT infer one data category merely from:
+- the type of organisation
+- the deployment context
+- EHR integration
+- the fact that patient data is involved
+- the fact that the system performs clinical analysis
+- another broader data category
+
+In particular:
+
+- Do NOT infer "personal_identifiers" merely because patient data, EHR data, hospital records, or person-level data are involved.
+
+- Do NOT infer "clinical_notes" merely because the system is used in a hospital, clinical workflow, EHR environment, or laboratory setting.
+
+- Do NOT infer "diagnostic_data" merely because the system performs clinical risk classification or is used in healthcare. Include it only when diagnostic results, diagnostic measurements, diagnoses, or equivalent diagnostic information are directly described.
+
+- Do NOT infer "biometric_data" from genetic data, medical images, ECG, physiological signals, or other health data unless biometric identity use is explicitly described.
+
+- Use "other" only when the source text clearly describes a concrete data category that cannot be represented by another available enum value. Do not use "other" merely because the documentation is broad or incomplete.
+
+Do not expand a broad data category into narrower categories unless the narrower category is explicitly supported by the source text.
+
+Examples:
+
+"The system processes patient health information."
+-> ["health_data"]
+
+"The system processes names, patient IDs, and health information."
+-> ["personal_identifiers", "health_data"]
+
+"The system processes physician-written clinical notes and diagnosis records."
+-> ["clinical_notes", "diagnostic_data", "health_data"]
+
+"The system integrates with the hospital EHR."
+-> This alone does NOT support "personal_identifiers", "clinical_notes", or "diagnostic_data".
+
+"The system processes laboratory test results."
+-> This supports "health_data"; do not automatically add unrelated categories.
+
+When evidence for a specific data category is absent, omit that category rather than inferring it.
 
 For health_data_processing, use a cautious but still screening-oriented interpretation.
 
