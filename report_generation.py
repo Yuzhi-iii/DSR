@@ -14,12 +14,15 @@ def extract_requirement_id(driver: str) -> Optional[str]:
     match = re.match(r"^(MR\d+)\b", driver.strip())
     return match.group(1) if match else None
 
+
 def load_text(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
+
 
 def load_json(path: str):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def extract_legal_references(
     requirement_mapping: dict,
@@ -30,7 +33,6 @@ def extract_legal_references(
 ) -> list:
     req_map = {r["requirement_id"]: r for r in requirements_catalogue}
     refs = []
-
     items = requirement_mapping["requirement_assessments"]
 
     if triggered_only:
@@ -41,15 +43,15 @@ def extract_legal_references(
         key_drivers = decision_output.get("key_drivers", [])
         driver_ids = []
         seen = set()
-  
+
         for driver in key_drivers:
             req_id = extract_requirement_id(driver)
             if req_id and req_id not in seen:
                 driver_ids.append(req_id)
-                seen.add(req_id)     
+                seen.add(req_id)
+
         if driver_ids:
             selected_ids = set(driver_ids)
-            
 
     if selected_ids is not None:
         item_map = {item["requirement_id"]: item for item in items}
@@ -58,20 +60,70 @@ def extract_legal_references(
     for item in items:
         req_id = item["requirement_id"]
         source = req_map.get(req_id, {})
-        
         primary_sources = source.get("primary_sources", [])
         supporting_sources = source.get("supporting_sources", [])
 
         if not primary_sources and not supporting_sources:
             continue
-        refs.append({
-            "requirement_id": req_id,
-            "name": item["name"],
-            "primary_sources": primary_sources,
-            "supporting_sources": supporting_sources,
-        })
+
+        refs.append(
+            {
+                "requirement_id": req_id,
+                "name": item["name"],
+                "primary_sources": primary_sources,
+                "supporting_sources": supporting_sources,
+            }
+        )
 
     return refs
+
+
+def derive_impact_assessment_signal(requirement_mapping: dict) -> dict:
+    """
+    Convert the deterministic MR6 assessment into an explicit reporting signal.
+    This is a reporting transformation only; it does not alter the rule engine.
+    """
+    assessments = requirement_mapping.get("requirement_assessments", [])
+    mr6 = next(
+        (item for item in assessments if item.get("requirement_id") == "MR6"),
+        None,
+    )
+
+    if not mr6 or not mr6.get("triggered"):
+        return {
+            "requirement_id": "MR6",
+            "status": "not_triggered",
+            "label": "No impact-assessment trigger identified",
+        }
+
+    status = mr6.get("status")
+    if status == "potential_gap":
+        return {
+            "requirement_id": "MR6",
+            "status": "triggered",
+            "label": "DPIA / impact-assessment escalation trigger identified",
+        }
+
+    if status == "insufficient_information":
+        return {
+            "requirement_id": "MR6",
+            "status": "review_needed",
+            "label": "Impact-assessment relevance requires further review",
+        }
+
+    if status == "met":
+        return {
+            "requirement_id": "MR6",
+            "status": "met",
+            "label": "Impact-assessment requirement assessed as met",
+        }
+
+    return {
+        "requirement_id": "MR6",
+        "status": status or "unknown",
+        "label": "Impact-assessment status requires review",
+    }
+
 
 def build_report_input(extracted, requirement_mapping, decision_output, requirements_catalogue):
     legal_references = extract_legal_references(
@@ -81,6 +133,7 @@ def build_report_input(extracted, requirement_mapping, decision_output, requirem
         triggered_only=True,
         key_drivers_only=True,
     )
+
     triggered_rules = [
         {
             "requirement_id": r["requirement_id"],
@@ -88,7 +141,7 @@ def build_report_input(extracted, requirement_mapping, decision_output, requirem
             "status": r["status"],
             "rationale": r["rationale"],
             "criticality": r["criticality"],
-            "recommended_action": r["recommended_action"]
+            "recommended_action": r["recommended_action"],
         }
         for r in requirement_mapping["requirement_assessments"]
         if r["triggered"]
@@ -97,13 +150,18 @@ def build_report_input(extracted, requirement_mapping, decision_output, requirem
     return {
         "structured_facts": extracted,
         "triggered_rules": triggered_rules,
+        "impact_assessment_signal": derive_impact_assessment_signal(requirement_mapping),
         "legal_references": legal_references,
-        "final_recommendation": decision_output
+        "final_recommendation": decision_output,
     }
+
 
 def main():
     if len(sys.argv) < 5:
-        print("Usage: python report_generation.py <extracted.json> <requirement_mapping.json> <decision_output.json> <requirements.json>")
+        print(
+            "Usage: python report_generation.py <extracted.json> "
+            "<requirement_mapping.json> <decision_output.json> <requirements.json>"
+        )
         sys.exit(1)
 
     extracted_path = sys.argv[1]
@@ -118,7 +176,12 @@ def main():
 
     developer_prompt = load_text("report_generation_prompt.md")
     template_text = load_text("report_template.md")
-    payload = build_report_input(extracted, requirement_mapping, decision_output, requirements_catalogue)
+    payload = build_report_input(
+        extracted,
+        requirement_mapping,
+        decision_output,
+        requirements_catalogue,
+    )
 
     user_prompt = (
         "Generate a preliminary compliance screening report based only on the structured inputs below.\n\n"
@@ -126,7 +189,7 @@ def main():
         "Preserve the section headings from the template exactly.\n"
         "Replace all placeholder text in the template with case-specific content derived from the structured inputs.\n"
         "Do not invent facts, legal references, requirement outcomes, or recommendations.\n"
-        "Do not change the provided risk level or recommended path.\n\n"
+        "Do not change the provided risk level, recommended path, requirement statuses, or impact-assessment signal.\n\n"
         "=== REPORT TEMPLATE ===\n"
         f"{template_text}\n\n"
         "=== STRUCTURED INPUTS ===\n"
@@ -137,17 +200,17 @@ def main():
         model="gpt-5.4-mini",
         input=[
             {"role": "developer", "content": developer_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+            {"role": "user", "content": user_prompt},
+        ],
     )
 
     report_text = response.output_text
-
     stem = Path(extracted_path).stem.replace("_extracted", "")
     output_path = Path(f"{stem}_report.md")
     output_path.write_text(report_text, encoding="utf-8")
 
     print(f"[OK] Report saved to: {output_path}")
+
 
 if __name__ == "__main__":
     main()
