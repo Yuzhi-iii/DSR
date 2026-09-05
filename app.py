@@ -209,6 +209,47 @@ def read_uploaded_text_file(uploaded_file) -> str:
     """
     return uploaded_file.getvalue().decode("utf-8")
 
+@st.dialog("Additional information may be needed")
+def show_clarification_dialog(questions: list) -> None:
+    """
+    Show one summary dialog instead of displaying every clarification
+    question and its technical details.
+    """
+    st.write(
+        "The initial check found that the following aspects are "
+        "missing or unclear:"
+    )
+
+    # Display each topic only once
+    topics = []
+    for question in questions:
+        topic = question.get("topic", "Additional information")
+        if topic not in topics:
+            topics.append(topic)
+
+    for topic in topics:
+        st.markdown(f"- {topic}")
+
+    st.write("Would you like to provide additional information?")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button(
+            "➕ Add information",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state.stage = "supplementary_information"
+            st.rerun()
+
+    with col2:
+        if st.button(
+            "Continue without it",
+            use_container_width=True,
+        ):
+            st.session_state.stage = "analysis_pending"
+            st.rerun()
 
 # -----------------------------
 # Sidebar
@@ -292,163 +333,165 @@ if uploaded_file and st.session_state.stage == "upload":
 elif not uploaded_file and st.session_state.stage == "upload":
     st.info("Please upload a case file to begin.")
 
-
 # -----------------------------
-# Clarification stage
+# Clarification dialog
 # -----------------------------
 
 if st.session_state.stage == "clarification":
     questions = st.session_state.clarification_questions
 
-    st.divider()
-    st.subheader("📌 Step 2: Additional Information Check")
+    if questions:
+        show_clarification_dialog(questions)
 
-    if not questions:
-        st.success(
-            "No major clarification questions were generated from the first-pass extraction."
+        st.info(
+            "The initial completeness check found some missing or "
+            "unclear information."
         )
-
-        st.write(
-            "You can now generate the final preliminary compliance screening report "
-            "using the original case description."
-        )
-
-        if st.button("🚀 Generate Final Report", type="primary"):
-            with st.status("Running final pipeline...", expanded=True) as status:
-                try:
-                    report_path = run_final_pipeline(Path(st.session_state.case_path))
-                    st.session_state.report_path = report_path
-                    st.session_state.stage = "final_report"
-
-                    status.update(label="Final report generated!", state="complete")
-                    st.rerun()
-
-                except Exception as e:
-                    status.update(label="Final pipeline failed.", state="error")
-                    st.exception(e)
 
     else:
-        st.markdown(
-            "The first-pass check found specific fields that are missing, unclear, "
-            "partial, not provided, or otherwise unresolved. Please answer only the "
-            "questions where you have additional information."
+        st.success(
+            "No major missing information was identified. "
+            "The case is ready for analysis."
         )
 
-        user_answers = {}
-        direct_answers = {}
-        needs_upload = False
+        if st.button(
+            "🚀 Analyse Case",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state.stage = "analysis_pending"
+            st.rerun()
 
-        for question in questions:
-            qid = question["question_id"]
 
-            with st.container(border=True):
-                st.markdown(f"### {question['topic']}")
+# -----------------------------
+# Supplementary information
+# -----------------------------
 
-                field_path = question.get("field_path", "")
-                current_value = question.get("current_value", "")
-                evidence_span = question.get("evidence_span", "")
+if st.session_state.stage == "supplementary_information":
+    st.divider()
+    st.subheader("➕ Add Information")
 
-                if field_path:
-                    st.caption(f"Related field: `{field_path}`")
+    st.write(
+        "Provide any additional information that may help clarify "
+        "the case. You can enter text, upload supporting materials, "
+        "or use both."
+    )
 
-                st.write(f"**First-pass value:** `{current_value}`")
+    additional_text = st.text_area(
+        "Additional information",
+        height=180,
+        placeholder=(
+            "For example: describe human oversight, the processing "
+            "purpose, legal basis, vendor responsibilities, or data "
+            "storage location."
+        ),
+        key="additional_information_text",
+    )
 
-                if evidence_span:
-                    with st.expander("View supporting excerpt from first-pass extraction"):
-                        st.write(evidence_span)
+    supplementary_files = st.file_uploader(
+        "Upload supporting materials (.txt) — optional",
+        type=["txt"],
+        accept_multiple_files=True,
+        key="supplementary_materials",
+    )
 
-                st.write(question["question"])
+    col1, col2 = st.columns(2)
 
-                material_prompt = question.get("material_prompt")
-                if material_prompt:
-                    st.caption(material_prompt)
+    with col1:
+        if st.button(
+            "🚀 Analyse With Added Information",
+            type="primary",
+            use_container_width=True,
+        ):
+            if not additional_text.strip() and not supplementary_files:
+                st.warning(
+                    "Please enter additional information or upload "
+                    "at least one supporting file."
+                )
+            else:
+                supplementary_texts = {}
 
-                answer = st.radio(
-                    label="How would you like to address this point?",
-                    options=[
-                        "direct_answer_provided",
-                        "additional_material_uploaded",
-                        "no_additional_information",
-                    ],
-                    format_func=lambda x: {
-                        "direct_answer_provided": "I can answer this now",
-                        "additional_material_uploaded": "I will upload supporting material",
-                        "no_additional_information": "No additional information available",
-                    }[x],
-                    key=f"answer_{qid}",
+                # Treat the unified text box as supplementary material
+                if additional_text.strip():
+                    supplementary_texts[
+                        "user_additional_information.txt"
+                    ] = additional_text.strip()
+
+                # Read uploaded supplementary files
+                for file in supplementary_files or []:
+                    filename = safe_filename(file.name)
+                    supplementary_texts[filename] = (
+                        read_uploaded_text_file(file)
+                    )
+
+                questions = st.session_state.clarification_questions
+
+                # Preserve compatibility with clarification_engine.py
+                user_answers = {
+                    question["question_id"]:
+                        "additional_material_uploaded"
+                    for question in questions
+                }
+
+                combined_path = (
+                    UPLOAD_DIR
+                    / f"{Path(st.session_state.case_path).stem}_combined.txt"
                 )
 
-                user_answers[qid] = answer
+                write_combined_case_file(
+                    output_path=combined_path,
+                    original_case_text=(
+                        st.session_state.original_case_text
+                    ),
+                    questions=questions,
+                    user_answers=user_answers,
+                    supplementary_texts=supplementary_texts,
+                    direct_answers={},
+                )
 
-                if answer == "direct_answer_provided":
-                    direct_answers[qid] = st.text_area(
-                        "Provide your clarification",
-                        key=f"direct_answer_{qid}",
-                        placeholder=(
-                            "Write a short clarification based on the materials "
-                            "or your knowledge of the case."
-                        ),
-                    )
+                st.session_state.case_path = combined_path
+                st.session_state.stage = "analysis_pending"
+                st.rerun()
 
-                elif answer == "additional_material_uploaded":
-                    needs_upload = True
+    with col2:
+        if st.button(
+            "Continue Without Additional Information",
+            use_container_width=True,
+        ):
+            st.session_state.stage = "analysis_pending"
+            st.rerun()
 
-        supplementary_files = []
 
-        if needs_upload:
-            st.divider()
-            st.markdown("### Upload supplementary materials")
-            st.write(
-                "Upload relevant `.txt` materials for the questions marked as requiring "
-                "supporting material. The system will combine these materials with the "
-                "original case and your clarification responses."
+# -----------------------------
+# Run final analysis
+# -----------------------------
+
+if st.session_state.stage == "analysis_pending":
+    with st.status(
+        "Analysing the case...",
+        expanded=True,
+    ) as status:
+        try:
+            report_path = run_final_pipeline(
+                Path(st.session_state.case_path)
             )
 
-            supplementary_files = st.file_uploader(
-                "Upload supplementary materials (.txt)",
-                type=["txt"],
-                accept_multiple_files=True,
+            st.session_state.report_path = report_path
+            st.session_state.stage = "final_report"
+
+            status.update(
+                label="Analysis complete!",
+                state="complete",
             )
+            st.rerun()
 
-        st.divider()
+        except Exception as e:
+            status.update(
+                label="Analysis failed.",
+                state="error",
+            )
+            st.exception(e)
 
-        if st.button("🚀 Generate Final Report With Current Information", type="primary"):
-            with st.status(
-                "Preparing combined case and running final pipeline...",
-                expanded=True,
-            ) as status:
-                try:
-                    supplementary_texts = {}
-
-                    for file in supplementary_files or []:
-                        filename = safe_filename(file.name)
-                        supplementary_texts[filename] = read_uploaded_text_file(file)
-
-                    combined_path = (
-                        UPLOAD_DIR
-                        / f"{Path(st.session_state.case_path).stem}_combined.txt"
-                    )
-
-                    write_combined_case_file(
-                        output_path=combined_path,
-                        original_case_text=st.session_state.original_case_text,
-                        questions=questions,
-                        user_answers=user_answers,
-                        supplementary_texts=supplementary_texts,
-                        direct_answers=direct_answers,
-                    )
-
-                    report_path = run_final_pipeline(combined_path)
-
-                    st.session_state.report_path = report_path
-                    st.session_state.stage = "final_report"
-
-                    status.update(label="Final report generated!", state="complete")
-                    st.rerun()
-
-                except Exception as e:
-                    status.update(label="Final pipeline failed.", state="error")
-                    st.exception(e)
 
 # -----------------------------
 # Final report stage
