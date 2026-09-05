@@ -1,0 +1,7 @@
+__pycache__/
+temp_uploads/
+*.pyc
+*_extracted.json
+*_requirement_mapping.json
+*_decision_output.json
+*_report.md
